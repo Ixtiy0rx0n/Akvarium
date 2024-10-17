@@ -1,29 +1,124 @@
 package org.example;
 
+
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
 
-public class Fish implements Runnable {
-    private static final Random random = new Random();
-    private static final AtomicInteger fishCount = new AtomicInteger(0);
-    private static int totalFishCount = 0; // Baliqlar sonini kuzatish uchun static o'zgaruvchi
-    private static int deadFishCount = 0; // o'lgan baliqlar soni
-    private final Gender gender;
-    private final int id;
-    private int lifeSpan;
-    private Boolean isNewBorn;
+public class Fish extends Thread {
+    public Random random = new Random();
+    private Akvarium akvarium;
+    private Gender gender;
+    private int life;
+    private int leftLife;// in second
+    private int x;
+    private int y;
+    private Boolean isNewBorn = false;
+
+    public Fish(Gender gender, int life, int x, int y, Boolean isNewBorn, int leftLife) {
+        this.gender = gender;
+        this.life = life;
+        this.leftLife = leftLife;
+        this.x = x;
+        this.y = y;
+        this.isNewBorn = isNewBorn;
+    }
+
+    @Override
+    public void run() {
+        try {
+            for (int i = 0; i <= life; i++) {
+                Thread.sleep(1000);
+                move();
+                if (getLife() > 3) {
+                    akvarium.checkForMating(this);
+                }
+                leftLife--;
+                if (leftLife == 0) {
+                    System.out.println("--------------------------------------");
+                    akvarium.remove(this);
+                }
+            }
 
 
-    public Fish() {
-        this.id = fishCount.incrementAndGet();
-        this.gender = random.nextBoolean() ? Gender.MALE : Gender.FEMALE;
-        this.lifeSpan = random.nextInt(60) + 20; // 10 sek ~ 50 sek
-        this.isNewBorn = false;
-        totalFishCount++;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "Ismi(Thread nomi)=" + getName() +
+                " jinsi=" + gender +
+                ", umri=" + life +
+                ", x=" + x +
+                ", y=" + y +
+                '}';
+    }
+
+    public void move() {
+        int direction = randomNumber(4);
+        switch (direction) {
+            case 1:
+                if (y < Akvarium.height) {
+                    y += 1;
+                }
+                break;
+            case 2:
+                if (x < Akvarium.width) {
+                    x += 1;
+                }
+                break;
+            case 3:
+                if (y > 0) {
+                    y -= 1;
+                }
+                break;
+            case 4:
+                if (x > 0) {
+                    x -= 1;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    public void setAquarium(Akvarium akvarium) {
+        this.akvarium = akvarium;
+    }
+
+    public boolean equals(Fish fish) {
+        if (this == fish) return true;
+        if (fish == null || getClass() != fish.getClass()) return false;
+        return x == fish.x && y == fish.y;
+
     }
 
     public Gender getGender() {
         return gender;
+    }
+
+    public int randomNumber(int n) {
+        return random.nextInt(n) + 1;
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public void setX(int x) {
+        this.x = x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public void setY(int y) {
+        this.y = y;
+    }
+
+    public int getLife() {
+        return life;
     }
 
     public Boolean getNewBorn() {
@@ -32,50 +127,5 @@ public class Fish implements Runnable {
 
     public void setNewBorn(Boolean newBorn) {
         isNewBorn = newBorn;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public int getLifeSpan() {
-        return lifeSpan;
-    }
-
-    @Override
-    public void run() {
-        try {
-            if (!isNewBorn) {
-                System.out.println(id + " Baliq (" + gender + ") akvariumga qo'yildi. Umri - " + lifeSpan + " sekund");
-            }
-            while (lifeSpan > 0) {
-                Thread.sleep(1000); // 1 sek
-                lifeSpan--;
-                if (lifeSpan == 0) {
-                    System.out.println(id + " baliq (" + gender + ") baliq o'ldi.");
-                    synchronized (Fish.class) {
-                        deadFishCount++;
-                        if (deadFishCount == totalFishCount) {
-                            System.out.println("Barcha baliqlar o'ldi akvariumda baliq qolmadi dastur o'chdi.");
-                            System.exit(0);
-                        }
-                    }
-                    break;
-                }
-            }
-
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static void birth(Fish male, Fish female) {
-        if (male.lifeSpan > 0 && female.lifeSpan > 0) {
-            System.out.println(male.id + " baliq (" + male.gender + ") baliq bilan " + female.id + " (" + female.gender + ") baliq uchrashdi...");
-            Fish newFish = new Fish();
-            newFish.setNewBorn(true);
-            System.out.println(newFish.id + " yangi baliq (" + newFish.gender + ") tug'ildi, Umri - " + newFish.lifeSpan + " sekund");
-            new Thread(newFish).start();
-        }
     }
 }
